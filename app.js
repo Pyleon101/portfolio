@@ -1,6 +1,6 @@
 /* Pyleon - app.js
-   EAT clock + awake guess, sticky header state, hero quick-reel switcher,
-   thumbnail fallback, video modal, Discord copy + toast, and scroll reveals. */
+   EAT clock + awake guess, floating scroll nav, hero preview deck,
+   thumbnail fallback, cinema video modal, Discord copy + toast, scroll reveals. */
 
 (function () {
   "use strict";
@@ -50,15 +50,36 @@
     el.textContent = String(new Date().getFullYear());
   });
 
-  /* ---------- sticky topbar border on scroll ---------- */
-  var topbar = $("#topbar");
-  if (topbar) {
-    var onScroll = function () {
-      topbar.classList.toggle("is-scrolled", (window.scrollY || 0) > 12);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-  }
+  /* ---------- floating pill nav + active section ---------- */
+  var floatNav = $("#float-nav");
+  var navLinks = $$("[data-nav]");
+  var sections = ["home", "work", "about", "contact"]
+    .map(function (id) {
+      return document.getElementById(id);
+    })
+    .filter(Boolean);
+
+  var updateNav = function () {
+    var y = window.scrollY || window.pageYOffset || 0;
+    if (floatNav) {
+      floatNav.classList.toggle("is-visible", y > 260);
+    }
+
+    var current = "home";
+    var trigger = y + window.innerHeight * 0.35;
+    sections.forEach(function (sec) {
+      if (sec.offsetTop <= trigger) {
+        current = sec.id;
+      }
+    });
+
+    navLinks.forEach(function (link) {
+      link.classList.toggle("is-active", link.getAttribute("data-nav") === current);
+    });
+  };
+
+  window.addEventListener("scroll", updateNav, { passive: true });
+  updateNav();
 
   /* ---------- scroll reveals ---------- */
   var reveals = $$(".reveal");
@@ -72,7 +93,7 @@
           }
         });
       },
-      { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
+      { threshold: 0.08, rootMargin: "0px 0px -36px 0px" }
     );
     reveals.forEach(function (el) {
       io.observe(el);
@@ -83,7 +104,7 @@
     });
   }
 
-  /* ---------- thumbnail fallback helper ---------- */
+  /* ---------- YouTube thumbnail fallback ---------- */
   var showThumbFallback = function (btn) {
     if (btn.classList.contains("no-thumb")) return;
     btn.classList.add("no-thumb");
@@ -97,12 +118,12 @@
     btn.appendChild(box);
   };
 
-  var attachThumbGuard = function (btn) {
+  $$(".media-box[data-open-clip]").forEach(function (btn) {
     var img = $("img", btn);
     if (!img) return;
     var triedFallback = false;
 
-    var handleIssue = function () {
+    var handleThumbIssue = function () {
       var fallback = img.getAttribute("data-fallback");
       if (!triedFallback && fallback && img.src !== fallback) {
         triedFallback = true;
@@ -112,26 +133,24 @@
       }
     };
 
-    img.addEventListener("error", handleIssue);
+    img.addEventListener("error", handleThumbIssue);
     img.addEventListener("load", function () {
       if (img.naturalWidth && img.naturalWidth <= 120) {
-        handleIssue();
+        handleThumbIssue();
       }
     });
 
     if (img.complete && (!img.naturalWidth || img.naturalWidth <= 120)) {
-      handleIssue();
+      handleThumbIssue();
     }
-  };
+  });
 
-  $$(".media-box[data-open-clip]").forEach(attachThumbGuard);
-
-  /* ---------- hero quick-reel switcher ---------- */
+  /* ---------- hero quick-preview deck switcher ---------- */
   var reelTrigger = $("#reel-trigger");
   var reelImg = $("#reel-img");
   var reelLabel = $("#reel-label");
   var reelJump = $("#reel-jump");
-  var reelTabs = $$(".reel-tab");
+  var reelTabs = $$(".deck__tab");
 
   if (reelTrigger && reelImg && reelTabs.length) {
     reelTabs.forEach(function (tab) {
@@ -177,7 +196,7 @@
     });
   }
 
-  /* ---------- native video modal (<dialog>) ---------- */
+  /* ---------- native cinema modal (<dialog>) ---------- */
   var modal = $("#clip-modal");
   var modalTitle = $("#clip-modal-title");
   var modalNote = $("#clip-modal-note");
@@ -235,7 +254,7 @@
     });
   }
 
-  /* ---------- Discord copy + toast ---------- */
+  /* ---------- Discord copy + floating toast ---------- */
   var toast = $("#toast");
   var toastTimer = null;
 
@@ -246,7 +265,7 @@
     window.clearTimeout(toastTimer);
     toastTimer = window.setTimeout(function () {
       toast.classList.remove("is-shown");
-    }, 2500);
+    }, 2600);
   };
 
   $$("[data-copy]").forEach(function (btn) {
@@ -256,12 +275,12 @@
 
     var onCopied = function () {
       btn.classList.add("is-copied");
-      if (label) label.textContent = "copied";
+      if (label) label.textContent = "Copied";
       showToast("copied " + handle + ", hit me up on discord");
       window.clearTimeout(btnTimer);
       btnTimer = window.setTimeout(function () {
         btn.classList.remove("is-copied");
-        if (label) label.textContent = "copy";
+        if (label) label.textContent = "Copy";
       }, 2200);
     };
 
